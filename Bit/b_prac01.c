@@ -73,7 +73,7 @@ main(int argc,char *argv[])
 	Chara chara = { "主人公",2000,200,100,Base, 2000, 150,
 		// sk.name     type usemp effect
 		{{"HP回復",      0,   50,  800},
-		 {"攻撃力アップ",1,   50,  120}
+		 {"攻撃力アップ",1,   50,  120},
 		 {"状態異常回復",2,   20,    0}} };
 
 	Mob mob[Mob_Num] = {
@@ -103,7 +103,7 @@ main(int argc,char *argv[])
 
 int DamageCalc(Spec sp1, Spec sp2) {
 	int damage;
-	//攻撃力ダウンフラグがONで、Atk_SkllがOFFのとき(主人公のみ)
+	//攻撃力ダウンフラグがONで、Atk_SkllがOFFのとき(自キャラのみ)
 	if ((sp1.state & AtkDown) && !(sp1.state & Atk_Skill)) {
 		//攻撃力0.8倍
 		sp1.atk *= 0.8;
@@ -122,7 +122,7 @@ void BattleMessage(Spec sp1, Spec* sp2) {
 	int damage;
 	TurnCount++;
 	printf("%sの攻撃\n", sp1.name);
-	damage = DamageCalc(sp1, sp2);//*sp2
+	damage = DamageCalc(sp1, *sp2);
 	printf("%sに%dのダメージ\n\n", sp2->name, damage);
 	sp2->hp -= damage;
 	if (sp2->hp <= 0) {
@@ -146,10 +146,92 @@ void BattleMode(Chara* c, Mob m) {
 			c->mp *= 0.9;
 		}
 		//たたかう
-		/*if (command == 1) {
+		if (command == 1) {
 			DisplayStatus(*c);
-			if(TurnCount % 2 == 0)
-		}*/
+			//TurnCountが偶数の時は自キャラの攻撃
+			if (TurnCount % 2 == 0) {
+				BattleMessage(c->sp, &m.sp);
+				if (m.sp.state & Dead) {
+					break;
+				}
+			}
+			//TurnCountが奇数の時は敵の攻撃
+			if (TurnCount % 2 == 1) {
+				BattleMessage(m.sp, &c->sp);
+				if (c->sp.state & Dead) {
+					break;
+				}
+				//自キャラが死んでいなければ以下の処理を実行
+				else {
+					//状態異常付加確率の計算
+					if (rand() % 100 < m.rate) {
+						printf("状態異常攻撃を受けた！\n");
+						//自キャラに状態異常を付加するときには、Atk_Skillフラグを除去しておく
+						c->sp.state |= (m.sp.state & ~Atk_Skill);
+					}
+					DisplayStatus(*c);
+				}
+			}
+		}
+		else if (command == -1) {
+			c->sp.state |= Dead;
+			return;
+		}
+		//スキル
+		else if (command == 2) {
+			printf("スキルの選択\n");
+			skill = SkillMenu(*c);
+			//MP残量チェック
+			if (c->mp >= c->skl[skill].use_mp) {
+				switch (skill)
+				{
+				case 0:
+					//HPを回復
+					c->sp.hp += c->skl[skill].effect;
+					//回復量がMaxHPを超えないように
+					if (c->sp.hp > c->maxhp) { 
+						c->sp.hp = c->maxhp;
+					}
+					//MPを減らす
+					c->mp -= c->skl[skill].use_mp;
+					printf("HPを%d回復した！\n", c->skl[skill].effect);
+					DisplayStatus(*c);
+					break;
+				case 1:
+					//ATKを1.20倍
+					c->sp.atk *= c->skl[skill].effect / 100.0;
+					//MPを減らす
+					c->mp -= c->skl[skill].use_mp;
+					//攻撃力アップフラグON
+					c->sp.state |= AtkUp;
+					DisplayStatus(*c);
+					printf("攻撃力がアップした！\n");
+					break;
+				case 2://状態異常回復の処理
+					//攻撃力アップは異常ではないので残す
+					if (c->sp.state & AtkUp) {
+						//状態変化をリセット
+						c->sp.state = Base;
+						//攻撃力アップを再度付加
+						c->sp.state |= AtkUp;
+					}
+					else {
+						//状態変化をリセット
+						c->sp.state = Base;
+					}
+					//MPを減らす
+					c->mp -= c->skl[skill].use_mp;
+					DisplayStatus(*c);
+					printf("状態異常が回復した！\n");
+					break;
+				default:
+					break;
+				}
+			}
+			else{
+				printf("MPが足りない！\n");
+			}
+		}
 	}
 }
 
@@ -181,6 +263,41 @@ void DisplayStatus(Chara c) {
 	}
 	printf("\n********************\n");
 }
+
+int DisplayMenu(void) {
+	char ch;
+
+	while (1){
+		printf("---------------\nコマンドを選択\n");
+		printf("1.たたかう\n2.スキル\n3.ぼうぎょ\n\n");
+		ch = getch();
+		if (ch > '0' && ch < '4') {
+			return ch - '0';
+		}
+		else if (ch == 'q') {	//隠しコマンド:強制終了'q'
+			return -1;
+		}
+	}
+}
+
+int SkillMenu(Chara c) {
+	char ch;
+	int i;
+
+	while (1){
+		printf("---------------\nスキルを選択\n");
+		for (i = 0; i < Skil_Num; i++) {
+			printf("%d.%s\n", i + 1, c.skl[i].name);
+		}
+		printf("\n");
+		ch = getch();
+		if (ch > '0' && ch < '4') {
+			return ch - '0'- 1;
+		}
+	}
+}
+
+
 
 void ChangeFlag(UINT* s) {
 	int a;
@@ -258,12 +375,5 @@ void ClearFlag(UINT* s) {
 }
 
 
-int DisplayMenu(void) {
-
-}
-
-int SkillMenu(Chara c) {
-
-}
 
 
