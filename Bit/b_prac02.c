@@ -3,6 +3,7 @@
 #include<time.h>
 #define Skil_Num 4	//スキル数
 #define Mob_Num 3	//敵の数
+#define File_Num 3	//データファイル数
 
 typedef unsigned int UINT;//符号なし整数をUINTで再定義
 
@@ -66,25 +67,16 @@ int SkillMenu(Chara c);
 int DamageCalc(Spec sp1, Spec sp2);
 //戦闘モード時のHP計算と死亡判定
 void BattleMessage(Spec sp1, Spec* sp2);
-
+//データファイルを読み込んで値を設定する
+int LoadDataFile(char* filename[], Chara* c, Mob* m);
 
 
 main(int argc,char *argv[])
 {
 	srand(time(0));
-	//				  name    hp  atk def state maxhp  mp
-	Chara chara = { "主人公",2000,200,100,Base, 2000, 150,
-		// sk.name     type usemp effect
-		{{"攻撃力アップ",1,   50,  120},
-		 {"防御力アップ",3,   50,  150},
-		 {"HP回復",      0,   50,  800},
-		 {"状態異常回復",2,   20,    0}} };
-
-	Mob mob[Mob_Num] = {
-		//name   hp  atk def state              rate%
-		{"敵A",  700,150,800,Poison  | Atk_Skill,30},
-		{"敵B", 1500,200,200,Burn    | Atk_Skill,30},
-		{"ボス",5000,200, 80,AtkDown | Atk_Skill,10} };
+	Chara chara;
+	Mob mob[Mob_Num];
+	char* DataFile[] = { "chara.csv","skill.csv","mob.csv" };
 
 	int num = rand() % Mob_Num;
 	//実行時に引数があった場合
@@ -397,6 +389,17 @@ void ClearFlag(UINT* s) {
 	}
 }
 
-
-
+int LoadDataFile(char* filename[], Chara* c, Mob* m) {
+	FILE* fp;
+	int i;
+	for (i = 0; i < File_Num; i++) {
+		if (fp = fopen(filename[i], "r")) {
+			
+		}
+		else {
+			printf("ファイルを開けません！\n");
+			return -1;
+		}
+	}
+}
 
