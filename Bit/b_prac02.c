@@ -78,6 +78,13 @@ main(int argc,char *argv[])
 	Mob mob[Mob_Num];
 	char* DataFile[] = { "chara.csv","skill.csv","mob.csv" };
 
+	int result;
+	result = LoadDataFile(DataFile, &chara, mob);
+	//ファイルの読み込みが失敗したら強制終了させる
+	if (result == -1) {
+		printf("致命的なエラーが発生しました\n");
+		return;
+	}
 	int num = rand() % Mob_Num;
 	//実行時に引数があった場合
 	if (argc > 1) {
@@ -394,12 +401,32 @@ int LoadDataFile(char* filename[], Chara* c, Mob* m) {
 	int i;
 	for (i = 0; i < File_Num; i++) {
 		if (fp = fopen(filename[i], "r")) {
-			
+			switch (i){
+			case 0:
+						//name, hp, atk, def, state, maxhp, mp
+				fscanf(fp, "%[^,],%d,%d,%d,%u,%d,%d", c->sp.name, &c->sp.hp, &c->sp.atk, &c->sp.def, &c->sp.state, &c->maxhp, &c->mp);
+				//%[^,]:^の後に書いた記号の手前までを文字列として読み取る
+				break;
+			case 1:
+				for (int j = 0; j < Skil_Num; j++) {
+					//name, type, use_np, effect
+					fscanf(fp, "%[^,],%d,%d,%d\n", c->skl[j].name, &c->skl[j].type, &c->skl[j].use_mp, &c->skl[j].effect);
+				}
+				break;
+			case 2:
+				for (int j = 0; j < Mob_Num; j++) {
+					//name, hp, atk, def, state, rate
+					fscanf(fp, "%[^,],%d,%d,%d,%u,%d\n", (m + j)->sp.name, &(m + j)->sp.hp, &(m + j)->sp.atk, &(m + j)->sp.def, &(m + j)->sp.state, &(m + j)->rate);
+				}
+				break;
+			}
+			fclose(fp);
 		}
 		else {
 			printf("ファイルを開けません！\n");
 			return -1;
 		}
 	}
+	return 0;
 }
 
